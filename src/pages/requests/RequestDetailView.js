@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { requestsAPI } from '../../services/api';
 import ApprovalActions from '../../components/forms/ApprovalActions';
+import ApprovalSystemDebugger from '../../components/debug/ApprovalSystemDebugger';
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -223,6 +224,10 @@ const RequestDetailView = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {process.env.NODE_ENV === 'development' && (
+        <ApprovalSystemDebugger requestId={id} />
       )}
 
       {/* Request Header */}
