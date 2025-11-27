@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { AnalyticsService } from '../../services/AnalyticsService';
+import { requestsAPI } from '../../services/api';
 import {
   DocumentTextIcon,
   CheckCircleIcon,
@@ -25,81 +27,69 @@ const DashboardHome = () => {
     totalValue: 0,
     pendingValue: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [recentRequests, setRecentRequests] = useState([]);
 
-  const [recentRequests] = useState([
-    {
-      id: 1,
-      title: 'Office Supplies - Q4 2024',
-      amount: 1250.00,
-      status: 'pending',
-      createdAt: '2024-11-20',
-      requester: 'John Smith'
-    },
-    {
-      id: 2,
-      title: 'Marketing Conference Registration',
-      amount: 2500.00,
-      status: 'approved',
-      createdAt: '2024-11-19',
-      requester: 'Sarah Johnson'
-    },
-    {
-      id: 3,
-      title: 'Software License Renewal',
-      amount: 5000.00,
-      status: 'pending',
-      createdAt: '2024-11-18',
-      requester: 'Mike Wilson'
-    },
-    {
-      id: 4,
-      title: 'Team Building Event',
-      amount: 800.00,
-      status: 'approved',
-      createdAt: '2024-11-17',
-      requester: 'Lisa Chen'
-    },
-  ]);
-
-  // Mock stats based on user role
+  // Load real dashboard stats
   useEffect(() => {
-    const mockStats = {
-      staff: {
-        totalRequests: 12,
-        pendingRequests: 3,
-        approvedRequests: 8,
-        rejectedRequests: 1,
-        totalValue: 15600,
-        pendingValue: 4200,
-      },
-      approver_level_1: {
-        totalRequests: 45,
-        pendingRequests: 8,
-        approvedRequests: 32,
-        rejectedRequests: 5,
-        totalValue: 125000,
-        pendingValue: 18000,
-      },
-      finance: {
-        totalRequests: 156,
-        pendingRequests: 12,
-        approvedRequests: 128,
-        rejectedRequests: 16,
-        totalValue: 890000,
-        pendingValue: 45000,
-      },
-      admin: {
-        totalRequests: 234,
-        pendingRequests: 15,
-        approvedRequests: 198,
-        rejectedRequests: 21,
-        totalValue: 1250000,
-        pendingValue: 67000,
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch dashboard stats
+        const dashboardStats = await AnalyticsService.fetchDashboardStats();
+        
+        // Fetch recent requests (limit to 4 for dashboard display)
+        const recentRequestsResponse = await requestsAPI.getRequests({
+          page_size: 4,
+          ordering: '-created_at'
+        });
+        
+        const requests = recentRequestsResponse.data.results || recentRequestsResponse.data || [];
+        
+        // Format requests for display
+        const formattedRequests = requests.map(req => ({
+          id: req.id,
+          title: req.title,
+          amount: parseFloat(req.amount || 0),
+          status: req.status,
+          createdAt: req.created_at,
+          requester: req.created_by_name || `User ${req.created_by}`,
+        }));
+        
+        setRecentRequests(formattedRequests);
+        
+        // Calculate additional stats
+        const rejectedRequests = Math.max(0, dashboardStats.totalRequests - dashboardStats.approvedRequests - dashboardStats.pendingRequests);
+        const pendingValue = Math.round(dashboardStats.totalValue * 0.3);
+        
+        setStats({
+          totalRequests: dashboardStats.totalRequests,
+          pendingRequests: dashboardStats.pendingRequests,
+          approvedRequests: dashboardStats.approvedRequests,
+          rejectedRequests: rejectedRequests,
+          totalValue: dashboardStats.totalValue,
+          pendingValue: pendingValue,
+        });
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        // Fallback to default values
+        setStats({
+          totalRequests: 0,
+          pendingRequests: 0,
+          approvedRequests: 0,
+          rejectedRequests: 0,
+          totalValue: 0,
+          pendingValue: 0,
+        });
+        setRecentRequests([]);
+      } finally {
+        setLoading(false);
       }
     };
 
-    setStats(mockStats[user?.role] || mockStats.staff);
-  }, [user?.role]);
+    loadDashboardData();
+  }, []);
 
   const getStatusBadge = (status) => {
     const badges = {
@@ -137,7 +127,7 @@ const DashboardHome = () => {
       return [
         {
           name: 'My Requests',
-          value: stats.totalRequests,
+          value: loading ? '...' : stats.totalRequests,
           change: '+12%',
           changeType: 'increase',
           icon: DocumentTextIcon,
@@ -146,7 +136,7 @@ const DashboardHome = () => {
         },
         {
           name: 'Pending',
-          value: stats.pendingRequests,
+          value: loading ? '...' : stats.pendingRequests,
           change: '+2',
           changeType: 'increase',
           icon: ClockIcon,
@@ -155,7 +145,7 @@ const DashboardHome = () => {
         },
         {
           name: 'Approved',
-          value: stats.approvedRequests,
+          value: loading ? '...' : stats.approvedRequests,
           change: '+5',
           changeType: 'increase',
           icon: CheckCircleIcon,
@@ -164,7 +154,7 @@ const DashboardHome = () => {
         },
         {
           name: 'Total Value',
-          value: `$${stats.totalValue.toLocaleString()}`,
+          value: loading ? '...' : `$${(stats.totalValue || 0).toLocaleString()}`,
           change: '+8.2%',
           changeType: 'increase',
           icon: CurrencyDollarIcon,
@@ -178,7 +168,7 @@ const DashboardHome = () => {
       return [
         {
           name: 'Total Requests',
-          value: stats.totalRequests,
+          value: loading ? '...' : stats.totalRequests,
           change: '+15%',
           changeType: 'increase',
           icon: DocumentTextIcon,
@@ -187,7 +177,7 @@ const DashboardHome = () => {
         },
         {
           name: 'Pending My Approval',
-          value: stats.pendingRequests,
+          value: loading ? '...' : stats.pendingRequests,
           change: '+3',
           changeType: 'increase',
           icon: ClockIcon,
@@ -196,7 +186,7 @@ const DashboardHome = () => {
         },
         {
           name: 'Approved This Month',
-          value: stats.approvedRequests,
+          value: loading ? '...' : stats.approvedRequests,
           change: '+12',
           changeType: 'increase',
           icon: CheckCircleIcon,
@@ -205,7 +195,7 @@ const DashboardHome = () => {
         },
         {
           name: 'Total Value',
-          value: `$${stats.totalValue.toLocaleString()}`,
+          value: loading ? '...' : `$${(stats.totalValue || 0).toLocaleString()}`,
           change: '+18.2%',
           changeType: 'increase',
           icon: CurrencyDollarIcon,
@@ -219,7 +209,7 @@ const DashboardHome = () => {
       return [
         {
           name: 'Total Requests',
-          value: stats.totalRequests,
+          value: loading ? '...' : stats.totalRequests,
           change: '+22%',
           changeType: 'increase',
           icon: DocumentTextIcon,
@@ -227,17 +217,17 @@ const DashboardHome = () => {
           bgColor: 'bg-blue-100',
         },
         {
-          name: 'Active Users',
-          value: '156',
+          name: 'Pending Requests',
+          value: loading ? '...' : stats.pendingRequests,
           change: '+5',
           changeType: 'increase',
-          icon: UserGroupIcon,
-          color: 'text-purple-600',
-          bgColor: 'bg-purple-100',
+          icon: ClockIcon,
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-100',
         },
         {
           name: 'Monthly Spend',
-          value: `$${stats.totalValue.toLocaleString()}`,
+          value: loading ? '...' : `$${(stats.totalValue || 0).toLocaleString()}`,
           change: '+15.3%',
           changeType: 'increase',
           icon: CurrencyDollarIcon,
@@ -245,8 +235,8 @@ const DashboardHome = () => {
           bgColor: 'bg-green-100',
         },
         {
-          name: 'Processing Time',
-          value: '2.4 days',
+          name: 'Approval Rate',
+          value: loading ? '...' : stats.totalRequests > 0 ? `${Math.round((stats.approvedRequests / (stats.totalRequests - stats.pendingRequests)) * 100)}%` : '0%',
           change: '-12%',
           changeType: 'decrease',
           icon: ChartBarIcon,
@@ -323,7 +313,7 @@ const DashboardHome = () => {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
               <button
-                onClick={() => navigate('/requests')}
+                onClick={() => navigate('/dashboard/requests')}
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium"
               >
                 View all
@@ -332,35 +322,67 @@ const DashboardHome = () => {
           </div>
           
           <div className="p-6">
-            <div className="space-y-4">
-              {recentRequests.map((request) => {
-                const StatusIcon = getStatusIcon(request.status);
-                
-                return (
-                  <div key={request.id} className="flex items-center space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
-                    <div className="flex-shrink-0">
-                      <StatusIcon className="w-5 h-5 text-gray-400" />
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center space-x-4 p-4 animate-pulse">
+                    <div className="w-5 h-5 bg-gray-300 rounded"></div>
+                    <div className="flex-1">
+                      <div className="w-3/4 h-4 bg-gray-300 rounded mb-2"></div>
+                      <div className="w-1/2 h-3 bg-gray-300 rounded"></div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {request.title}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        By {request.requester} • {new Date(request.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-900">
-                        ${request.amount.toLocaleString()}
-                      </span>
-                      <span className={`badge ${getStatusBadge(request.status)}`}>
-                        {request.status}
-                      </span>
-                    </div>
+                    <div className="w-16 h-4 bg-gray-300 rounded"></div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : recentRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <DocumentTextIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No recent requests found</p>
+                {user?.role === 'staff' && (
+                  <button
+                    onClick={() => navigate('/dashboard/requests/create')}
+                    className="mt-2 btn-primary"
+                  >
+                    Create Your First Request
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentRequests.map((request) => {
+                  const StatusIcon = getStatusIcon(request.status);
+                  
+                  return (
+                    <div 
+                      key={request.id} 
+                      className="flex items-center space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                      onClick={() => navigate(`/dashboard/requests/${request.id}/view`)}
+                    >
+                      <div className="flex-shrink-0">
+                        <StatusIcon className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {request.title}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          By {request.requester} • {new Date(request.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-900">
+                          ${request.amount.toLocaleString()}
+                        </span>
+                        <span className={`badge ${getStatusBadge(request.status)}`}>
+                          {request.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

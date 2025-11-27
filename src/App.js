@@ -14,6 +14,9 @@ import PendingApprovalsPage from './pages/requests/PendingApprovalsPage';
 import ApprovedRequests from './pages/requests/ApprovedRequests';
 import RequestDetailView from './pages/requests/RequestDetailView';
 import RequestEditForm from './pages/requests/RequestEditForm';
+import AnalyticsDashboard from './pages/analytics/AnalyticsDashboard';
+import UserManagement from './pages/admin/UserManagement';
+import Settings from './pages/settings/Settings';
 
 // TEMPORARY: Mock user for demo purposes
 const MockAuthProvider = ({ children }) => {
@@ -87,9 +90,9 @@ function App() {
               <Route path="requests/:id/view" element={<RequestDetailView />} />
               <Route path="requests/:id/edit" element={<RequestEditForm />} />
               <Route path="approvals" element={<PendingApprovalsPage />} />
-              <Route path="analytics" element={<div className="p-8">Analytics - Coming Soon</div>} />
-              <Route path="users" element={<div className="p-8">Users - Coming Soon</div>} />
-              <Route path="settings" element={<div className="p-8">Settings - Coming Soon</div>} />
+              <Route path="analytics" element={<AnalyticsDashboard />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="settings" element={<Settings />} />
             </Route>
             
             {/* Catch all route */}

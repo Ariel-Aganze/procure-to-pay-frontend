@@ -75,6 +75,9 @@ export const authAPI = {
   changePassword: (data) => api.post('/api/auth/change-password/', data),
   getDashboardStats: () => api.get('/api/auth/dashboard-stats/'),
   getUsers: (params) => api.get('/api/auth/users/', { params }),
+  createUser: (userData) => api.post('/api/auth/users/', userData),
+  updateUser: (id, userData) => api.patch(`/api/auth/users/${id}/`, userData),
+  deleteUser: (id) => api.delete(`/api/auth/users/${id}/`),
 };
 
 // Purchase Request API
@@ -105,11 +108,18 @@ export const requestsAPI = {
   getPendingApprovals: () => api.get('/api/pending-approvals/'),
   getFinanceRequests: () => api.get('/api/finance-requests/'),
   getDashboardStats: () => api.get('/api/dashboard-stats/'),
+  // Analytics endpoints
+  getAnalytics: (params) => api.get('/api/analytics/', { params }),
+  getSpendingTrend: (params) => api.get('/api/analytics/spending-trend/', { params }),
+  getStatusBreakdown: (params) => api.get('/api/analytics/status-breakdown/', { params }),
+  getDepartmentSpending: (params) => api.get('/api/analytics/department-spending/', { params }),
+  getProcessingTimes: (params) => api.get('/api/analytics/processing-times/', { params }),
 };
 
 // Documents API
 export const documentsAPI = {
-  getProcessingStatus: (id) => api.get(`/api/documents/status/${id}/`),
+  getProcessingStatus: (requestId, jobId) => api.get(`/api/documents/status/${requestId}/${jobId}/`),
+  getCometProcessingStatus: (requestId, jobId) => api.get(`/api/documents/comet-status/${requestId}/${jobId}/`),
   uploadProforma: (id, file) => {
     const formData = new FormData();
     formData.append('proforma', file);
@@ -117,10 +127,19 @@ export const documentsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  uploadReceipt: (requestId, file) => {
+    const formData = new FormData();
+    formData.append('receipt', file);
+    return api.post(`/api/requests/${requestId}/receipt/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   triggerProcessing: (id, data) => api.post(`/api/documents/trigger/${id}/`, data),
-  getProcessingJobs: (params) => api.get('/api/documents/jobs/', { params }),
+  triggerCometProcessing: (id, data) => api.post(`/api/documents/comet-process/${id}/`, data),
+  getProcessingJobs: (requestId) => api.get(`/api/documents/jobs/${requestId}/`),
   getJobDetails: (id) => api.get(`/api/documents/jobs/${id}/`),
   getOllamaStatus: () => api.get('/api/documents/ollama-status/'),
+  getCometStatus: () => api.get('/api/documents/comet-status/'),
   getProcessingStats: () => api.get('/api/documents/processing-stats/'),
 };
 

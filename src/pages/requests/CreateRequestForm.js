@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { requestsAPI } from '../../services/api';
+import AIDocumentProcessor from '../../components/forms/AIDocumentProcessor';
 import {
   DocumentTextIcon,
   CurrencyDollarIcon,
@@ -39,7 +40,6 @@ const CreateRequestForm = () => {
     ],
   });
 
-  const [proformaFile, setProformaFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
   const priorities = [
@@ -99,47 +99,6 @@ const CreateRequestForm = () => {
         ...prev,
         items: prev.items.filter((_, i) => i !== index)
       }));
-    }
-  };
-
-  const handleFileSelect = (file) => {
-    if (file) {
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-      if (!allowedTypes.includes(file.type)) {
-        setError('Please upload a PDF or image file (JPG, PNG)');
-        return;
-      }
-      
-      // Validate file size (10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size must be less than 10MB');
-        return;
-      }
-      
-      setProformaFile(file);
-      setError('');
-    }
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleFileSelect(files[0]);
     }
   };
 
@@ -210,18 +169,7 @@ const CreateRequestForm = () => {
       const createdRequest = response.data;
       console.log('Request created successfully:', createdRequest);
 
-      // TODO: Add items separately if needed
-      // For now, let's just create the basic request
-
-      // Upload proforma if provided
-      if (proformaFile && createdRequest.id) {
-        try {
-          await requestsAPI.uploadProforma(createdRequest.id, proformaFile);
-        } catch (uploadError) {
-          console.error('Proforma upload failed:', uploadError);
-          // Don't fail the entire process if proforma upload fails
-        }
-      }
+      // Note: AI document processing is now handled separately in the AIDocumentProcessor component
 
       setSuccess(true);
       
@@ -555,60 +503,51 @@ const CreateRequestForm = () => {
           </div>
         </div>
 
-        {/* Proforma Upload */}
+        {/* AI Document Processing */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
             <PaperClipIcon className="w-5 h-5 mr-2" />
-            Proforma / Quotation (Optional)
+            Proforma / Quotation Processing
           </h2>
-
-          <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              dragActive ? 'border-primary-500 bg-primary-50' : 'border-gray-300'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            {proformaFile ? (
-              <div className="flex items-center justify-center space-x-3">
-                <PaperClipIcon className="w-8 h-8 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{proformaFile.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {(proformaFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setProformaFile(null)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <XMarkIcon className="w-5 h-5" />
-                </button>
-              </div>
-            ) : (
-              <div>
-                <PaperClipIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-2">
-                  Drag and drop your proforma here, or{' '}
-                  <label className="text-primary-600 cursor-pointer hover:text-primary-700">
-                    browse
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileSelect(e.target.files[0])}
-                    />
-                  </label>
-                </p>
-                <p className="text-xs text-gray-500">
-                  PDF, JPG, PNG up to 10MB
-                </p>
-              </div>
-            )}
-          </div>
+          <p className="text-gray-600 mb-4">
+            Upload your proforma or quotation document and our Comet AI will automatically extract vendor information, 
+            items, and pricing to populate your request. Supports PDF, JPG, and PNG formats.
+          </p>
+          
+          <AIDocumentProcessor
+            requestId={null} // Will be set after request creation
+            documentType="proforma"
+            onProcessingComplete={(extractedData) => {
+              console.log('AI extracted data:', extractedData);
+              
+              // Auto-populate form fields with extracted data
+              if (extractedData.vendor) {
+                setFormData(prev => ({
+                  ...prev,
+                  vendorName: extractedData.vendor.name || prev.vendorName,
+                  vendorEmail: extractedData.vendor.email || prev.vendorEmail,
+                }));
+              }
+              
+              // Auto-populate items if extracted
+              if (extractedData.items && extractedData.items.length > 0) {
+                const extractedItems = extractedData.items.map(item => ({
+                  description: item.description,
+                  quantity: item.quantity,
+                  unitPrice: item.unit_price.toString(),
+                  brand: '',
+                  model: '',
+                  specifications: '',
+                  totalPrice: item.quantity * item.unit_price,
+                }));
+                
+                setFormData(prev => ({
+                  ...prev,
+                  items: extractedItems,
+                }));
+              }
+            }}
+          />
         </div>
 
         {/* Submit Buttons */}

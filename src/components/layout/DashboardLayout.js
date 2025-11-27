@@ -23,8 +23,8 @@ import {
 const DashboardLayout = ({ authValue }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const auth = useAuth();
-  const { user, logout } = authValue || auth;
+  const hookAuth = useAuth();
+  const { user, logout } = authValue || hookAuth;
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -42,12 +42,22 @@ const DashboardLayout = ({ authValue }) => {
       ];
     }
 
-    if (user?.role?.includes('approver') || user?.role === 'admin') {
+    if (user?.role === 'approver_level_1') {
       return [
         ...baseItems,
         { name: 'All Requests', href: '/dashboard/requests', icon: DocumentTextIcon, current: location.pathname === '/dashboard/requests' },
         { name: 'Pending Approvals', href: '/dashboard/approvals', icon: InboxIcon, current: location.pathname === '/dashboard/approvals' },
         { name: 'My Requests', href: '/dashboard/requests/my', icon: ShoppingCartIcon, current: location.pathname === '/dashboard/requests/my' },
+      ];
+    }
+
+    if (user?.role === 'approver_level_2') {
+      return [
+        ...baseItems,
+        { name: 'All Requests', href: '/dashboard/requests', icon: DocumentTextIcon, current: location.pathname === '/dashboard/requests' },
+        { name: 'Pending Approvals', href: '/dashboard/approvals', icon: InboxIcon, current: location.pathname === '/dashboard/approvals' },
+        { name: 'My Requests', href: '/dashboard/requests/my', icon: ShoppingCartIcon, current: location.pathname === '/dashboard/requests/my' },
+        { name: 'Analytics', href: '/dashboard/analytics', icon: ChartBarIcon, current: location.pathname === '/dashboard/analytics' },
       ];
     }
 
